@@ -1,0 +1,67 @@
+{
+  "SaviDetectConfiguration":
+  {
+    "LogDirectory": "z:\\scratch\\logs",
+    "PollingDelay" :  500000,
+    "Jobs":
+    [
+      {
+        "ProgramToExecute": "x:\\repos\\publish\\TestSaviDetect.exe",
+        "DirectoryToMonitor": "z:\\scratch\\SaviDetectTest",
+        "UserArguments":
+        [
+        ],
+        "DelayAfterFileDetection": 1000,
+        "AllowMultipleNotifications": "true",
+        "ReturnActionTags": "false",
+        "Changed": "true",
+        "Created": "true",
+        "Deleted": "true",
+        "Renamed": "true"
+      },
+      {
+        "ProgramToExecute": "C:\\Users\\Alan\\Documents\\Savian\\SGF Papers\\SGF 2010 Demo\\Output",
+        "DirectoryToMonitor": "C:\\Program Files\\Microsoft Office\\Office14\\EXCEL.EXE",
+        "UserArguments":
+        [
+          "-o Test"
+        ],
+        "DelayAfterFileDetection": 5000,
+        "AllowMultipleNotifications": "true",
+        "ReturnActionTags": "false",
+        "Changed": "true",
+        "Created": "true",
+        "Deleted": "false",
+        "Renamed": "false"
+      }
+    ],
+    "Serilog":
+    {
+      "MinimumLevel":
+      {
+        "Default": "Verbose",
+        "Override":
+        {
+          "Microsoft": "Error",
+          "System": "Error"
+        }
+      },
+      "WriteTo":
+      [
+        {
+          "Name": "File",
+          "Args":
+          {
+            "fileSizeLimitBytes": "2000000",
+            "rollingInterval": "Day",
+            "retainedFileCountLimit": "2",
+            "rollOnFileSizeLimit": "true",
+            "shared": "true",
+            "flushToDiskInterval": "00:00:01",
+            "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}]{SourceContext} {Message:lj}{NewLine}{Exception}"
+          }
+        }
+      ]
+    }
+  }
+}
