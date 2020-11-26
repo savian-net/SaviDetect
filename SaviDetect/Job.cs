@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,6 @@ namespace SaviDetect
         public string ProgramToExecute { get; set; }
         public string DirectoryToMonitor { get; set; }
         public List<string> UserArguments { get; set; }
-        //public bool UsePolling { get; set; }
         public int DelayAfterFileDetection { get; set; }
         public bool AllowMultipleNotifications { get; set; }
         public bool ReturnActionTags { get; set; }
@@ -56,87 +56,7 @@ namespace SaviDetect
                 Log.Error($"Directory does not exist: {DirectoryToMonitor}");
                 return;
             }
-            //lastPollTime = DateTime.Now;
-            //if (UsePolling)
-            //{
-            //    var files = new DirectoryInfo(DirectoryToMonitor).GetFiles();
-            //    lastFileCollection.AddRange(files);
-            //    var t = Task.Factory.StartNew(CreatePollingThread);
-            //}
-            //else
-            //{
-                CreateFileSystemWatcher();
-            //}
-        }
-
-        //private async void CreatePollingThread()
-        //{
-        //    while (true)
-        //    {
-        //        var files =
-        //            new DirectoryInfo(DirectoryToMonitor).GetFiles().Where(p => !p.Name.StartsWith("TeraCopy"))
-        //                .ToList();
-        //        if (Deleted)
-        //        {
-        //            var deletes = lastFileCollection.Where(p => files.All(p2 => p2.FullName != p.FullName)).ToList();
-        //            foreach (var delFile in deletes)
-        //            {
-        //                CreateCurrentParmObject();
-        //                this.Deleted = true;
-        //                fsw_HandleFileEvent(delFile.FullName, WatcherChangeTypes.Deleted);
-        //            }
-        //        }
-
-        //        if (Created)
-        //        {
-        //            var creates = files.Where(p => lastFileCollection.All(p2 => p2.FullName != p.FullName)).ToList();
-        //            //Common.Log.Info("**** LAST: " + lastFileCollection.Count + "; FILES: " + files.Count + "; CREATES: " + creates.Count);
-        //            foreach (var createdFile in creates)
-        //            {
-        //                if (Renamed && FileWasRenamed(createdFile))
-        //                {
-        //                    CreateCurrentParmObject();
-        //                    this.Renamed = true;
-        //                    fsw_HandleFileEvent(createdFile.FullName, WatcherChangeTypes.Renamed);
-        //                }
-        //                else
-        //                {
-        //                    CreateCurrentParmObject();
-        //                    this.Created = true;
-        //                    fsw_HandleFileEvent(createdFile.FullName, WatcherChangeTypes.Created);
-        //                }
-        //            }
-        //        }
-
-        //        if (Changed)
-        //        {
-        //            var changes = files.Where(p => p.LastWriteTime > lastPollTime);
-        //            foreach (var changedFile in changes)
-        //            {
-        //                CreateCurrentParmObject();
-        //                this.Changed = true;
-        //                fsw_HandleFileEvent(changedFile.FullName, WatcherChangeTypes.Changed);
-        //            }
-        //        }
-
-        //        lastFileCollection = new List<FileInfo>();
-        //        lastFileCollection.AddRange(files);
-        //        //Common.Log.Info("LAST: " + lastFileCollection.Count + "; FILES: " + files.Count); // + "; CREATES: " + creates.Count);
-        //        //foreach (var fi in lastFileCollection)
-        //        //{
-        //        //    Common.Log.Info(fi.FullName);
-        //        //}
-        //        lastPollTime = DateTime.Now;
-        //        Thread.Sleep( PollingDelay);
-        //    }
-        //}
-
-        private bool FileWasRenamed(FileInfo fi)
-        {
-            var matchFound = lastFileCollection.Any(p => p.Length == fi.Length && p.CreationTime == fi.CreationTime);
-            if (matchFound)
-                return true;
-            return false;
+            CreateFileSystemWatcher();
         }
 
         private void CreateFileSystemWatcher()
@@ -183,7 +103,6 @@ namespace SaviDetect
 
         private void CreateCurrentParmObject()
         {
-            //this.Created = false;
             this.Changed = false;
             this.Deleted = false;
             this.Renamed = false;
@@ -230,47 +149,77 @@ namespace SaviDetect
                     Log.Info($"Delay after action detected: {this.DelayAfterFileDetection} ms");
                     Thread.Sleep(this.DelayAfterFileDetection);
                 }
-                ProcessStartInfo psi = new ProcessStartInfo(this.ProgramToExecute);
-                psi.Arguments = BuildArgumentList(fullPath, changeType);
-                Log.Info($"Inititiate process: {ProgramToExecute} {psi.Arguments}");
-                psi.UseShellExecute = false;
-                psi.RedirectStandardOutput = true;
-                psi.WindowStyle = ProcessWindowStyle.Hidden;
-                try
+                if (ProgramToExecute.ToLower().StartsWith("http"))
                 {
-                    System.Diagnostics.Process process = System.Diagnostics.Process.Start(psi);
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("Executing the following command: " + psi.FileName + " " + psi.Arguments);
-                    sb.Append("Process executed.");
-                    var output = process.StandardOutput.ReadToEnd().Trim();
-                    if (output != string.Empty)
+                    try
                     {
-                        sb.AppendLine("Standard output is: " + output);
+                        Log.Info("Using service.");
+                        var result = UseService(fullPath, changeType);
+                        Log.Info($"Call complete: {result.Result}");
                     }
-                    else
-                        sb.AppendLine();
-
-                    Log.Info(sb.ToString());
-                    process.WaitForExit(this.MillisecondsToWait);
-                    isEventHandled = true;
-                    //process.Exited += new EventHandler(process_Exited);
+                    catch (Exception ex)
+                    {
+                        Log.Info($"Service exception: {ex}");
+                    }
                 }
-                catch (IOException ex)
+                else
                 {
-                    Log.Error($"File not found. Arguments passed were: {psi.Arguments}", ex);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error($"Process failed to execute. Process info: {psi.FileName} {psi.Arguments}", ex);
+                    UseProcess(fullPath, changeType);
                 }
             }
         }
 
-        //void process_Exited(object sender, EventArgs e)
-        //{
-        //    System.Diagnostics.Process p = (System.Diagnostics.Process)sender;
-        //    p.Close();
-        //}
+        private async Task<string> UseService(string fullPath, WatcherChangeTypes changeType)
+        {
+            var reqMsg = $"{ProgramToExecute.TrimEnd('/')}&fullpath={System.Net.WebUtility.UrlEncode(fullPath)}&changetype={System.Net.WebUtility.UrlEncode(changeType.ToString())}";
+            Log.Info($"Sending request: {reqMsg}");
+            var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Post, reqMsg);
+            var response = await client.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Info($"Success sending request");
+                return await response.Content.ReadAsStringAsync();
+            }
+            Log.Info($"Failed sending request: {response.Content.ReadAsStringAsync()}");
+            return string.Empty;
+        }
+
+        private void UseProcess(string fullPath, WatcherChangeTypes changeType)
+        {
+            ProcessStartInfo psi = new ProcessStartInfo(this.ProgramToExecute);
+            psi.Arguments = BuildArgumentList(fullPath, changeType);
+            Log.Info($"Inititiate process: {ProgramToExecute} {psi.Arguments}");
+            psi.UseShellExecute = false;
+            psi.RedirectStandardOutput = true;
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            try
+            {
+                System.Diagnostics.Process process = System.Diagnostics.Process.Start(psi);
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("Executing the following command: " + psi.FileName + " " + psi.Arguments);
+                sb.Append("Process executed.");
+                var output = process.StandardOutput.ReadToEnd().Trim();
+                if (output != string.Empty)
+                {
+                    sb.AppendLine("Standard output is: " + output);
+                }
+                else
+                    sb.AppendLine();
+
+                Log.Info(sb.ToString());
+                process.WaitForExit(this.MillisecondsToWait);
+                isEventHandled = true;
+            }
+            catch (IOException ex)
+            {
+                Log.Error($"File not found. Arguments passed were: {psi.Arguments}", ex);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Process failed to execute. Process info: {psi.FileName} {psi.Arguments}", ex);
+            }
+        }
 
         private string BuildArgumentList(string fullPath, WatcherChangeTypes changeType)
         {

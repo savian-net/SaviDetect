@@ -50,4 +50,4 @@ Arguments are specified in the SaviDetectSettings.json file.
 
 ### Install as a service
 
-A cmd file is included called InstallSaviDetect.cmd. This will run the commands necessary to isnatll SaviDetect as a Windows service. 
+A cmd file is included called InstallSaviDetect.cmd. This will run the commands necessary to install SaviDetect as a Windows service. 

@@ -2,6 +2,7 @@
   "SaviDetectConfiguration":
   {
     "LogDirectory": "E:/temp/Ipsos/logs",
+    "PollingDelay" :  500000,
     "Jobs":
     [
       {
